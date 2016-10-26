@@ -1,0 +1,17 @@
+{
+  "name": "strava-up-csv",
+  "version": "0.0.0",
+  "description": "An utility to upload data from CSV to Strava.",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "BSD-2-Clause",
+  "dependencies": {
+    "request": "~2.76.0",
+    "strava-v3": "~1.12.1",
+    "moment": "~2.15.2",
+    "request-debug": "~0.2.0"
+  }
+}
