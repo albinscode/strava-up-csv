@@ -1,0 +1,25 @@
+{
+    "_templates-comments:": "this is the list of activity templates that allows you to define some recurrent activities",
+    "templates": {
+        "trajet bl": [
+            {
+                "name": "Aller BL",
+                "type": "Ride",
+                "date_time": "8:30",
+                "elapsed_time": 1800,
+                "description": "Aller BL",
+                "distance": 13.3,
+                "commute": 1
+            },
+            {
+                "name": "Retour BL",
+                "type": "Ride",
+                "date_time": "17:30",
+                "elapsed_time": 1800,
+                "description": "Retour BL",
+                "distance": 13.3,
+                "commute": 1
+            }
+        ]
+    }
+}
