@@ -1,14 +1,25 @@
 {
     "_templates-comments:": "this is the list of activity templates that allows you to define some recurrent activities",
     "templates": {
+        "trajet agence": [
+            {
+                "name": "Aller/Retour agence",
+                "type": "Ride",
+                "date_time": "12:00",
+                "elapsed_time": 1800,
+                "description": "Conduite en ville",
+                "distance": 10000,
+                "commute": 1
+            }
+        ],
         "trajet bl": [
             {
                 "name": "Aller BL",
                 "type": "Ride",
-                "date_time": "8:30",
+                "date_time": "08:30",
                 "elapsed_time": 1800,
                 "description": "Aller BL",
-                "distance": 13.3,
+                "distance": 13300,
                 "commute": 1
             },
             {
@@ -17,7 +28,7 @@
                 "date_time": "17:30",
                 "elapsed_time": 1800,
                 "description": "Retour BL",
-                "distance": 13.3,
+                "distance": 13300,
                 "commute": 1
             }
         ]
