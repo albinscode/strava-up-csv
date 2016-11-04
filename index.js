@@ -5,6 +5,7 @@ var fs = require('fs');
 
 program
     .version('0.0.0')
+    .option('-l --listTemplates', 'the list of available templates')
     .option('-s --startDate <startDate>', 'the starting date')
     .option('-e --endDate <endDate>', 'the ending date')
     .option('-a --activity <activity>', 'the activity name to use for the period')
@@ -12,8 +13,23 @@ program
     .option('-S --simulate', 'to simulate execution')
     .parse(process.argv);
 
-// We display help if no parameter provided
+// We display help if no argument provided
+// We have at least 2 arguments 'node' and 'index.js' the current script.
 if (process.argv.length < 3) program.help();
+
+// We load the json conf file
+var conf = loadConfiguration();
+
+// Listing templates from json conf file
+if (program.listTemplates) {
+    console.log('Displaying available activity templates');
+
+    // We browse all available templates
+    Object.keys(conf.templates).forEach(function (key) {
+        console.log('- %s', key);
+    });
+    process.exit();
+}
 
 program.startDate = checkDate(program.startDate, 'The starting date is not valid (shall be YYYMMDD)');
 program.endDate = checkDate(program.endDate, 'The ending date is not valid (shall be YYYMMDD)');
@@ -23,7 +39,6 @@ program.endDate.hours(23).minutes(59);
 if (program.activity === undefined) throw Error('The activity name is mandatory');
 if (program.simulate) console.log('Simulating exchanges with strava, no data will be added or deleted');
 
-var conf = loadConfiguration();
 // We browse all available templates
 Object.keys(conf.templates).forEach(function (key) {
    if (key == program.activity) {
