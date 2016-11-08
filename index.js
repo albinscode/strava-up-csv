@@ -10,12 +10,15 @@ program
     .option('-e --endDate <endDate>', 'the ending date')
     .option('-a --activity <activity>', 'the activity name to use for the period')
     .option('-i --ignoreWeekEnd', 'to ignore week ends in a period of time')
+    .option('-E --except <except>', 'to ignore specific day')
     .option('-S --simulate', 'to simulate execution')
     .parse(process.argv);
 
 // We display help if no argument provided
 // We have at least 2 arguments 'node' and 'index.js' the current script.
 if (process.argv.length < 3) program.help();
+
+console.log(JSON.stringify(program));
 
 // We load the json conf file
 var conf = loadConfiguration();
@@ -42,22 +45,26 @@ if (program.simulate) console.log('Simulating exchanges with strava, no data wil
 // We browse all available templates
 Object.keys(conf.templates).forEach(function (key) {
    if (key == program.activity) {
-       console.log('we will create activity!');
        while (program.startDate.isBefore(program.endDate)) {
-           if (program.ignoreWeekEnd && program.startDate.day() == 6 || program.startDate.day() == 0) {
+           if (program.ignoreWeekEnd && program.startDate.day() == 6 || program.startDate.day() === 0) {
                console.log('Ignoring week end day');
            }
            // We browse all values for a given template of workout
            else {
                conf.templates[key].forEach(function (activity, key) {
-                   // Getting hour and minute of the activity. We add a fake date to parse if easily.
-                   var time = moment('2016-10-28 ' + activity.date_time);
-                   var dateTime = moment(program.startDate).hours(time.hours()).minutes(time.minutes());
-                   console.log('Adding activity %j for date %j', program.activity, dateTime.format());
-                   //console.log(JSON.stringify(activity));
-                   activity.start_date_local = dateTime.format();
-                   if (!program.simulate) {
-                       createActivity(activity);
+                   var ifIgnore = program.except !== undefined && moment(program.except).isValid() && program.startDate.isSame(program.except, 'days');
+                   if (!ifIgnore) {
+                       // Getting hour and minute of the activity. We add a fake date to parse if easily.
+                       var time = moment('2016-10-28 ' + activity.date_time);
+                       var dateTime = moment(program.startDate).hours(time.hours()).minutes(time.minutes());
+                       console.log('Adding activity %j for date %j', program.activity, dateTime.format());
+                       //console.log(JSON.stringify(activity));
+                       activity.start_date_local = dateTime.format();
+                       if (!program.simulate) {
+                           createActivity(activity);
+                       }
+                   } else {
+                       console.log('Ignoring day %j', program.except);
                    }
                });
            }
