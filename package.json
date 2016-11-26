@@ -9,10 +9,11 @@
   "author": "",
   "license": "BSD-2-Clause",
   "dependencies": {
-    "request": "~2.76.0",
-    "strava-v3": "~1.12.1",
+    "commander": "~2.9.0",
+    "inquirer": "^1.2.3",
     "moment": "~2.15.2",
+    "request": "~2.76.0",
     "request-debug": "~0.2.0",
-    "commander": "~2.9.0"
+    "strava-v3": "~1.12.1"
   }
 }

@@ -3,8 +3,12 @@ var moment = require('moment');
 var program = require('commander');
 var fs = require('fs');
 
+const stravaConfig = './data/strava_config';
+const stravaConfigTemplate = 'node_modules/strava-v3/strava_config';
+
 program
     .version('0.0.0')
+    .option('-g --generate', 'to generate the authentication token for strava')
     .option('-l --listTemplates', 'the list of available templates')
     .option('-s --startDate <startDate>', 'the starting date')
     .option('-e --endDate <endDate>', 'the ending date')
@@ -13,6 +17,10 @@ program
     .option('-E --except <except>', 'to ignore specific day')
     .option('-S --simulate', 'to simulate execution')
     .parse(process.argv);
+
+if (program.generate) {
+    generateNewToken(); return;
+}
 
 // We display help if no argument provided
 // We have at least 2 arguments 'node' and 'index.js' the current script.
@@ -115,17 +123,74 @@ function getAthleteInfos() {
  * and then update the strava_config.
  */
 function generateNewToken() {
-    // Generates the url to have full access
-    var url = strava.oauth.getRequestAccessURL({
-      scope:"view_private,write"
-    });
-    // We have to grab the code manually in the browser and then copy/paste it into strava_config as "access_token"
-    console.log('url is ' + url);
-    // Code to paste
-    var code = "";
-    strava.oauth.getToken(code,function(err, token) {
-        console.log(token);
-    });
+
+    console.log('Before processing, you shall fill your strava config with client id and secret provided by Strava:\n https://www.strava.com/settings/api#_=_ ');
+
+    var inquirer = require('inquirer');
+
+    inquirer
+        .prompt(
+            [
+                {
+                    type: 'input',
+                    name: 'clientId',
+                    message: 'What is your strava client id?'
+                },
+                {
+                    type: 'input',
+                    name: 'clientSecret',
+                    message: 'What is your strava client secret?'
+                }
+            ])
+        .then(function (answers) {
+
+            console.log('the value entered is ' + answers.clientId);
+            // We copy the strava config file
+            try {
+                fs.mkdirSync('data');
+            } catch (e) {
+                // nothing
+            }
+
+            var content = fs.readFileSync(stravaConfigTemplate);
+            fs.writeFileSync(stravaConfig, content);
+
+            // We open the default config file and inject the client_id
+            var content = fs.readFileSync(stravaConfig);
+            var config = JSON.parse(content);
+            config.client_id = answers.clientId;
+            config.client_secret = answers.clientSecret;
+            config.access_token = 'to define';
+            config.redirect_uri = 'http://localhost';
+
+            // We update the config file
+            fs.writeFileSync(stravaConfig, JSON.stringify(config));
+
+            // Generates the url to have full access
+            var url = strava.oauth.getRequestAccessURL({
+              scope:"view_private,write"
+            });
+            // We have to grab the code manually in the browser and then copy/paste it into strava_config as "access_token"
+            console.log('Connect to the following url and copy the code: ' + url);
+
+            inquirer.prompt(
+                [
+                    {
+                        type: 'input',
+                        name: 'code',
+                        message: 'Enter the code obtained from previous strava url'
+                    }
+                ])
+            .then(function (answers2) {
+                strava.oauth.getToken(answers2.code, function(err, result) {
+                    // We update the access token in strava conf file
+                    if (result.access_token === undefined) throw 'Problem with provided code: ' + JSON.stringify(result);
+                    config.access_token = result.access_token;
+                    fs.writeFileSync(stravaConfig, JSON.stringify(config));
+                });
+            });
+        });
+
 }
 
 
@@ -159,7 +224,10 @@ function createActivity(activity) {
     strava.activities.create(
         activity,
         function (error, success) {
-            if (error) throw error;
+            if (error) {
+                console.log(JSON.stringify(error));
+                throw error;
+            }
             console.log(success);
         }
     );
