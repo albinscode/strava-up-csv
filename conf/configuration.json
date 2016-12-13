@@ -31,6 +31,26 @@
                 "distance": 13300,
                 "commute": 1
             }
+        ],
+        "trajet linagora": [
+            {
+                "name": "Aller linagora",
+                "type": "Ride",
+                "date_time": "08:30",
+                "elapsed_time": 2400,
+                "description": "Aller linagora",
+                "distance": 19000,
+                "commute": 1
+            },
+            {
+                "name": "Retour linagora",
+                "type": "Ride",
+                "date_time": "17:30",
+                "elapsed_time": 2400,
+                "description": "Retour linagora",
+                "distance": 19000,
+                "commute": 1
+            }
         ]
     }
 }
