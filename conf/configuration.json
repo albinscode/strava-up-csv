@@ -1,7 +1,7 @@
 {
     "_templates-comments:": "this is the list of activity templates that allows you to define some recurrent activities",
     "templates": {
-        "trajet agence": [
+        "bl_agence": [
             {
                 "name": "Aller/Retour agence",
                 "type": "Ride",
@@ -12,7 +12,7 @@
                 "commute": 1
             }
         ],
-        "trajet bl": [
+        "bl": [
             {
                 "name": "Aller BL",
                 "type": "Ride",
@@ -32,7 +32,27 @@
                 "commute": 1
             }
         ],
-        "trajet linagora": [
+        "belberaud": [
+            {
+                "name": "Aller BL via belberaud",
+                "type": "Ride",
+                "date_time": "08:30",
+                "elapsed_time": 900,
+                "description": "Aller BL",
+                "distance": 6500,
+                "commute": 1
+            },
+            {
+                "name": "Retour BL via belberaud",
+                "type": "Ride",
+                "date_time": "17:30",
+                "elapsed_time": 900,
+                "description": "Retour BL",
+                "distance": 6500,
+                "commute": 1
+            }
+        ],
+        "linagora": [
             {
                 "name": "Aller linagora",
                 "type": "Ride",
