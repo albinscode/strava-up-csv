@@ -10,6 +10,7 @@ program
     .version('0.0.0')
     .option('-g --generate', 'to generate the authentication token for strava')
     .option('-l --listTemplates', 'the list of available templates')
+    .option('-L --listActivities', 'the list of activities')
     .option('-s --startDate <startDate>', 'the starting date')
     .option('-e --endDate <endDate>', 'the ending date')
     .option('-a --activity <activity>', 'the activity name to use for the period')
@@ -46,6 +47,14 @@ program.startDate = checkDate(program.startDate, 'The starting date is not valid
 program.endDate = checkDate(program.endDate, 'The ending date is not valid (shall be YYYMMDD)');
 
 program.endDate.hours(23).minutes(59);
+
+// we want to list activities between two dates
+if (program.listActivities) {
+    browseActivities();
+    console.log("end of function call");
+    return;
+    // process.exit();
+}
 
 if (program.activity === undefined) throw Error('The activity name is mandatory');
 if (program.simulate) console.log('Simulating exchanges with strava, no data will be added or deleted');
@@ -202,10 +211,12 @@ function browseActivities() {
     var startDate = moment().add(-50, 'days');
     var endDate = moment().add(-10, 'days');
 
-    console.log (typeof startDate.valueOf());
-    console.log (startDate.valueOf());
+    // console.log (typeof startDate.valueOf());
+    // console.log (startDate.valueOf());
 
     strava.athlete.listActivities({after: startDate.unix(), before: endDate.unix() }, function(error, activities) {
+        console.log('Listing activies');
+        console.log(activities);
         if (error) console.log('error is ' + error);//throw Error(error);
         //console.log(JSON.stringify(activities));
 
@@ -214,6 +225,7 @@ function browseActivities() {
             console.log(activities[key]);
         });
     });
+    console.log("end of browse activities");
 }
 
 /**
