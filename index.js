@@ -11,6 +11,7 @@ program
     .option('-g --generate', 'to generate the authentication token for strava')
     .option('-l --listTemplates', 'the list of available templates')
     .option('-L --listActivities', 'the list of activities')
+    .option('-f --file <file>', 'the csv file to export activities to')
     .option('-s --startDate <startDate>', 'the starting date')
     .option('-e --endDate <endDate>', 'the ending date')
     .option('-a --activity <activity>', 'the activity name to use for the period')
@@ -27,7 +28,7 @@ if (program.generate) {
 // We have at least 2 arguments 'node' and 'index.js' the current script.
 if (process.argv.length < 3) program.help();
 
-console.log(JSON.stringify(program));
+// console.log(JSON.stringify(program));
 
 // We load the json conf file
 var conf = loadConfiguration();
@@ -43,52 +44,55 @@ if (program.listTemplates) {
     process.exit();
 }
 
+// Settings date ranges
 program.startDate = checkDate(program.startDate, 'The starting date is not valid (shall be YYYMMDD)');
 program.endDate = checkDate(program.endDate, 'The ending date is not valid (shall be YYYMMDD)');
-
 program.endDate.hours(23).minutes(59);
 
 // we want to list activities between two dates
 if (program.listActivities) {
-    browseActivities();
-    console.log("end of function call");
+    if (program.file === undefined) throw Error("You shall specify a csv file to export data to");
+    exportActivities();
     return;
-    // process.exit();
 }
 
 if (program.activity === undefined) throw Error('The activity name is mandatory');
 if (program.simulate) console.log('Simulating exchanges with strava, no data will be added or deleted');
 
-// We browse all available templates
-Object.keys(conf.templates).forEach(function (key) {
-   if (key == program.activity) {
-       while (program.startDate.isBefore(program.endDate)) {
-           if (program.ignoreWeekEnd && program.startDate.day() == 6 || program.startDate.day() === 0) {
-               console.log('Ignoring week end day');
-           }
-           // We browse all values for a given template of workout
-           else {
-               conf.templates[key].forEach(function (activity, key) {
-                   var ifIgnore = program.except !== undefined && moment(program.except).isValid() && program.startDate.isSame(program.except, 'days');
-                   if (!ifIgnore) {
-                       // Getting hour and minute of the activity. We add a fake date to parse if easily.
-                       var time = moment('2016-10-28 ' + activity.date_time);
-                       var dateTime = moment(program.startDate).hours(time.hours()).minutes(time.minutes());
-                       console.log('Adding activity %j for date %j', program.activity, dateTime.format());
-                       //console.log(JSON.stringify(activity));
-                       activity.start_date_local = dateTime.format();
-                       if (!program.simulate) {
-                           createActivity(activity);
+manageCreateActivity();
+
+function manageCreateActivity() {
+    // We browse all available templates
+    Object.keys(conf.templates).forEach(function (key) {
+       if (key == program.activity) {
+           while (program.startDate.isBefore(program.endDate)) {
+               if (program.ignoreWeekEnd && program.startDate.day() == 6 || program.startDate.day() === 0) {
+                   console.log('Ignoring week end day');
+               }
+               // We browse all values for a given template of workout
+               else {
+                   conf.templates[key].forEach(function (activity, key) {
+                       var ifIgnore = program.except !== undefined && moment(program.except).isValid() && program.startDate.isSame(program.except, 'days');
+                       if (!ifIgnore) {
+                           // Getting hour and minute of the activity. We add a fake date to parse if easily.
+                           var time = moment('2016-10-28 ' + activity.date_time);
+                           var dateTime = moment(program.startDate).hours(time.hours()).minutes(time.minutes());
+                           console.log('Adding activity %j for date %j', program.activity, dateTime.format());
+                           //console.log(JSON.stringify(activity));
+                           activity.start_date_local = dateTime.format();
+                           if (!program.simulate) {
+                               createActivity(activity);
+                           }
+                       } else {
+                           console.log('Ignoring day %j', program.except);
                        }
-                   } else {
-                       console.log('Ignoring day %j', program.except);
-                   }
-               });
+                   });
+               }
+               program.startDate.add(1, 'days');
            }
-           program.startDate.add(1, 'days');
        }
-   }
-});
+    });
+}
 
 /**
  * @return the configuration file as javascript object.
@@ -204,28 +208,55 @@ function generateNewToken() {
 
 
 /**
- * TODO later, check if the activity already exists...
  */
-function browseActivities() {
+function exportActivities() {
 
-    var startDate = moment().add(-50, 'days');
-    var endDate = moment().add(-10, 'days');
+    // We will iterate for 100 pages with 100 activities on each
+    var perPage = 100;
 
-    // console.log (typeof startDate.valueOf());
-    // console.log (startDate.valueOf());
+    var headers = '';
 
-    strava.athlete.listActivities({after: startDate.unix(), before: endDate.unix() }, function(error, activities) {
-        console.log('Listing activies');
-        console.log(activities);
-        if (error) console.log('error is ' + error);//throw Error(error);
-        //console.log(JSON.stringify(activities));
+    // we delete an already existing file
+    if (fs.existsSync(program.file)) {
+        fs.unlinkSync(program.file);
+    }
 
-        //if (activities.keys().length > 0)
-        Object.keys(activities).forEach(function(key) {
-            console.log(activities[key]);
-        });
+    conf.activities_export.columns.forEach(function (key) {
+        headers = headers + key + conf.activities_export.column_separator;
     });
-    console.log("end of browse activities");
+    fs.appendFileSync(program.file, headers);
+
+    fetchActivity(0, perPage);
+}
+
+function fetchActivity(page, perPage) {
+    var content = '';
+
+    strava.athlete.listActivities({after: program.startDate.unix(), before: program.endDate.unix(), per_page: perPage, page: page}, function(error, activities) {
+        if (error) {
+            console.log('error is ' + error);
+            // throw Error(error);
+            // Normally we shall have reach
+            return;
+        }
+
+        activities.forEach(function(activity) {
+            // we browse only first level activity properties
+            Object.keys(activity).forEach(function (key) {
+
+                // we export it only if specified
+                if (conf.activities_export.columns.includes(key)) {
+                    content = content + activity[key] + conf.activities_export.column_separator;
+                }
+            });
+            content = content + conf.activities_export.row_separator;
+            fs.appendFileSync(program.file, content);
+            content = '';
+        });
+
+        // browse for next activities
+        // if (activities) fetchActivity(page+1);
+    });
 }
 
 /**
