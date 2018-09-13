@@ -1,6 +1,7 @@
 var strava = require('strava-v3');
 var moment = require('moment');
 var program = require('commander');
+var Promise = require('promise');
 var fs = require('fs');
 
 const stravaConfig = './data/strava_config';
@@ -226,37 +227,47 @@ function exportActivities() {
     });
     fs.appendFileSync(program.file, headers);
 
-    fetchActivity(0, perPage);
+    // will be called recursivly from page 0 to n
+    fetchActivity('', 0, perPage).then(function (content, error) {
+        fs.appendFileSync(program.file, content);
+    });
 }
 
-function fetchActivity(page, perPage) {
-    var content = '';
+// A promise that will contain the csv generated content
+function fetchActivity(content, page, perPage) {
+    return new Promise(function (resolve, reject) {
 
-    strava.athlete.listActivities({after: program.startDate.unix(), before: program.endDate.unix(), per_page: perPage, page: page}, function(error, activities) {
-        if (error) {
-            console.log('error is ' + error);
-            // throw Error(error);
-            // Normally we shall have reach
-            return;
-        }
+        strava.athlete.listActivities({after: program.startDate.unix(), before: program.endDate.unix(), per_page: perPage, page: page}, function(error, activities) {
 
-        activities.forEach(function(activity) {
-            // we browse only first level activity properties
-            Object.keys(activity).forEach(function (key) {
+            if (error) {
+                console.log('error is ' + JSON.stringify(error));
+                reject(error)
+            }
 
-                // we export it only if specified
-                if (conf.activities_export.columns.includes(key)) {
-                    content = content + activity[key] + conf.activities_export.column_separator;
-                }
+            activities.forEach(function(activity) {
+                // we browse only first level activity properties
+                Object.keys(activity).forEach(function (key) {
+
+                    // we export it only if specified
+                    if (conf.activities_export.columns.includes(key)) {
+                        content = content + activity[key] + conf.activities_export.column_separator;
+                    }
+                });
+                content = content + conf.activities_export.row_separator;
             });
-            content = content + conf.activities_export.row_separator;
-            fs.appendFileSync(program.file, content);
-            content = '';
-        });
 
-        // browse for next activities
-        // if (activities) fetchActivity(page+1);
-    });
+            // we continue to fetch from strava server
+            if (activities.length === perPage) {
+                console.log("fetching from strava");
+                resolve(fetchActivity(content, page+1, perPage));
+            }
+            // no more strava requests to run
+            else {
+                // console.log(content);
+                resolve(content);
+            }
+        });
+    })
 }
 
 /**
