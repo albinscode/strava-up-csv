@@ -9,12 +9,12 @@
   "author": "",
   "license": "BSD-2-Clause",
   "dependencies": {
-    "commander": "~2.9.0",
-    "inquirer": "^1.2.3",
-    "moment": "^2.22.2",
-    "promise": "^8.0.1",
-    "request": "^2.88.0",
-    "request-debug": "~0.2.0",
-    "strava-v3": "~1.12.1"
+    "commander": "2.9.0",
+    "inquirer": "1.2.3",
+    "moment": "2.22.2",
+    "promise": "8.0.1",
+    "request": "2.88.0",
+    "request-debug": "0.2.0",
+    "strava-v3": "1.12.1"
   }
 }

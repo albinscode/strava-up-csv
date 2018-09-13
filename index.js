@@ -225,11 +225,14 @@ function exportActivities() {
     conf.activities_export.columns.forEach(function (key) {
         headers = headers + key + conf.activities_export.column_separator;
     });
+    headers = headers + conf.activities_export.row_separator;
+
     fs.appendFileSync(program.file, headers);
 
     // will be called recursivly from page 0 to n
     fetchActivity('', 0, perPage).then(function (content, error) {
         fs.appendFileSync(program.file, content);
+        console.log("File " + program.file + " has been written");
     });
 }
 
@@ -239,6 +242,7 @@ function fetchActivity(content, page, perPage) {
 
         strava.athlete.listActivities({after: program.startDate.unix(), before: program.endDate.unix(), per_page: perPage, page: page}, function(error, activities) {
 
+            console.log("fetching from strava");
             if (error) {
                 console.log('error is ' + JSON.stringify(error));
                 reject(error)
@@ -250,7 +254,11 @@ function fetchActivity(content, page, perPage) {
 
                     // we export it only if specified
                     if (conf.activities_export.columns.includes(key)) {
-                        content = content + activity[key] + conf.activities_export.column_separator;
+                        var value = '';
+                        if (activity[key]) {
+                            value = activity[key];
+                        }
+                        content = content + value + conf.activities_export.column_separator;
                     }
                 });
                 content = content + conf.activities_export.row_separator;
@@ -258,7 +266,6 @@ function fetchActivity(content, page, perPage) {
 
             // we continue to fetch from strava server
             if (activities.length === perPage) {
-                console.log("fetching from strava");
                 resolve(fetchActivity(content, page+1, perPage));
             }
             // no more strava requests to run
