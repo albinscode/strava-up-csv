@@ -3,6 +3,7 @@ var moment = require('moment');
 var program = require('commander');
 var Promise = require('promise');
 var fs = require('fs');
+var log = require('./lib/LogBridge');
 
 const stravaConfig = './data/strava_config';
 const stravaConfigTemplate = 'node_modules/strava-v3/strava_config';
@@ -29,8 +30,6 @@ if (program.generate) {
 // We have at least 2 arguments 'node' and 'index.js' the current script.
 if (process.argv.length < 3) program.help();
 
-// console.log(JSON.stringify(program));
-
 // We load the json conf file
 var conf = loadConfiguration();
 
@@ -52,7 +51,6 @@ program.endDate.hours(23).minutes(59);
 
 // we want to list activities between two dates
 if (program.listActivities) {
-    if (program.file === undefined) throw Error("You shall specify a csv file to export data to");
     exportActivities();
     return;
 }
@@ -222,17 +220,26 @@ function exportActivities() {
         fs.unlinkSync(program.file);
     }
 
-    conf.activities_export.columns.forEach(function (key) {
-        headers = headers + key + conf.activities_export.column_separator;
-    });
-    headers = headers + conf.activities_export.row_separator;
+    if (program.file) {
+        conf.activities_export.columns.forEach(function (key) {
+            headers = headers + key + conf.activities_export.column_separator;
+        });
+        headers = headers + conf.activities_export.row_separator;
 
-    fs.appendFileSync(program.file, headers);
+        fs.appendFileSync(program.file, headers);
+    }
 
     // will be called recursivly from page 0 to n
     fetchActivity('', 0, perPage).then(function (content, error) {
-        fs.appendFileSync(program.file, content);
-        console.log("File " + program.file + " has been written");
+
+        if (program.file) {
+            fs.appendFileSync(program.file, content);
+            log.info("File " + program.file + " has been written");
+        }
+        else {
+            // log.info('output formatter', 'Writing csv file: %j/%j', jsonObj.filepath, filenamePattern);
+            log.format(content);
+        }
     });
 }
 
@@ -242,9 +249,9 @@ function fetchActivity(content, page, perPage) {
 
         strava.athlete.listActivities({after: program.startDate.unix(), before: program.endDate.unix(), per_page: perPage, page: page}, function(error, activities) {
 
-            console.log("fetching from strava");
+            log.info("fetching from strava");
             if (error) {
-                console.log('error is ' + JSON.stringify(error));
+                log.error('error is ' + JSON.stringify(error));
                 reject(error)
             }
 
@@ -270,7 +277,6 @@ function fetchActivity(content, page, perPage) {
             }
             // no more strava requests to run
             else {
-                // console.log(content);
                 resolve(content);
             }
         });
@@ -286,10 +292,10 @@ function createActivity(activity) {
         activity,
         function (error, success) {
             if (error) {
-                console.log(JSON.stringify(error));
+                log.error(JSON.stringify(error));
                 throw error;
             }
-            console.log(success);
+            log.info(success);
         }
     );
 }
