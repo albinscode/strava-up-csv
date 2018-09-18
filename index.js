@@ -66,7 +66,7 @@ function manageCreateActivity() {
        if (key == program.activity) {
            while (program.startDate.isBefore(program.endDate)) {
                if (program.ignoreWeekEnd && program.startDate.day() == 6 || program.startDate.day() === 0) {
-                   console.log('Ignoring week end day');
+                   log.info('Ignoring week end day');
                }
                // We browse all values for a given template of workout
                else {
@@ -76,14 +76,14 @@ function manageCreateActivity() {
                            // Getting hour and minute of the activity. We add a fake date to parse if easily.
                            var time = moment('2016-10-28 ' + activity.date_time);
                            var dateTime = moment(program.startDate).hours(time.hours()).minutes(time.minutes());
-                           console.log('Adding activity %j for date %j', program.activity, dateTime.format());
-                           //console.log(JSON.stringify(activity));
+                           log.info('Adding activity %j for date %j', program.activity, dateTime.format());
+                           log.verbose(JSON.stringify(activity));
                            activity.start_date_local = dateTime.format();
                            if (!program.simulate) {
                                createActivity(activity);
                            }
                        } else {
-                           console.log('Ignoring day %j', program.except);
+                           log.info('Ignoring day %j', program.except);
                        }
                    });
                }
@@ -122,10 +122,10 @@ function checkDate(date, errorMessage) {
 function getAthleteInfos() {
     strava.athlete.get({},function(err,payload) {
         if(!err) {
-            console.log(payload);
+            log.info(payload);
         }
         else {
-            console.log(err);
+            log.error(err);
         }
     });
 }
@@ -136,7 +136,7 @@ function getAthleteInfos() {
  */
 function generateNewToken() {
 
-    console.log('Before processing, you shall fill your strava config with client id and secret provided by Strava:\n https://www.strava.com/settings/api#_=_ ');
+    log.info('Before processing, you shall fill your strava config with client id and secret provided by Strava:\n https://www.strava.com/settings/api#_=_ ');
 
     var inquirer = require('inquirer');
 
@@ -156,7 +156,7 @@ function generateNewToken() {
             ])
         .then(function (answers) {
 
-            console.log('the value entered is ' + answers.clientId);
+            log.info('the value entered is ' + answers.clientId);
             // We copy the strava config file
             try {
                 fs.mkdirSync('data');
@@ -183,7 +183,7 @@ function generateNewToken() {
               scope:"view_private,write"
             });
             // We have to grab the code manually in the browser and then copy/paste it into strava_config as "access_token"
-            console.log('Connect to the following url and copy the code: ' + url);
+            log.info('Connect to the following url and copy the code: ' + url);
 
             inquirer.prompt(
                 [
@@ -220,31 +220,43 @@ function exportActivities() {
         fs.unlinkSync(program.file);
     }
 
-    if (program.file) {
-        conf.activities_export.columns.forEach(function (key) {
-            headers = headers + key + conf.activities_export.column_separator;
-        });
-        headers = headers + conf.activities_export.row_separator;
-
-        fs.appendFileSync(program.file, headers);
-    }
-
     // will be called recursivly from page 0 to n
-    fetchActivity('', 0, perPage).then(function (content, error) {
+    fetchActivity([], 0, perPage).then(function (lines, error) {
 
         if (program.file) {
-            fs.appendFileSync(program.file, content);
+            // headers
+            Object.keys(conf.activities_export.columns).forEach(function (key) {
+                headers = headers + key + conf.activities_export.column_separator;
+            });
+            headers = headers + conf.activities_export.row_separator;
+
+            // content
+            lines.forEach(function (line) {
+                line.forEach(function(column) {
+                    content = content + conf.activities_export.column_separator;
+                });
+                content = content + conf.activities_export.row_separator;
+            });
+            fs.appendFileSync(program.file, headers + content);
             log.info("File " + program.file + " has been written");
         }
         else {
-            // log.info('output formatter', 'Writing csv file: %j/%j', jsonObj.filepath, filenamePattern);
-            log.format(content);
+            lines.forEach(function (line) {
+                var consoleLine = '';
+                var columns = conf.activities_export.columns;
+                Object.keys(columns).forEach(function (key) {
+                    consoleLine = consoleLine + columns[key].header + ': ' + line[key] + '\n';
+                });
+
+                log.format(consoleLine);
+            });
+
         }
     });
 }
 
-// A promise that will contain the csv generated content
-function fetchActivity(content, page, perPage) {
+// Retrieves the strava data into a subset of data filtered from configurated columns
+function fetchActivity(lines, page, perPage) {
     return new Promise(function (resolve, reject) {
 
         strava.athlete.listActivities({after: program.startDate.unix(), before: program.endDate.unix(), per_page: perPage, page: page}, function(error, activities) {
@@ -254,30 +266,37 @@ function fetchActivity(content, page, perPage) {
                 log.error('error is ' + JSON.stringify(error));
                 reject(error)
             }
+            log.verbose(JSON.stringify(activities));
+
 
             activities.forEach(function(activity) {
+                var item = {};
                 // we browse only first level activity properties
                 Object.keys(activity).forEach(function (key) {
 
+                    var columns = conf.activities_export.columns;
                     // we export it only if specified
-                    if (conf.activities_export.columns.includes(key)) {
-                        var value = '';
+                    if (Object.keys(columns).includes(key)) {
+                        var value = columns[key].default;
                         if (activity[key]) {
                             value = activity[key];
                         }
-                        content = content + value + conf.activities_export.column_separator;
+                        if (columns[key]['filter']) {
+                            value = eval(columns[key].filter + '(' + value + ')');
+                        }
+                        item[key] = value;
                     }
                 });
-                content = content + conf.activities_export.row_separator;
+                lines.push(item);
             });
 
             // we continue to fetch from strava server
             if (activities.length === perPage) {
-                resolve(fetchActivity(content, page+1, perPage));
+                resolve(fetchActivity(lines, page+1, perPage));
             }
             // no more strava requests to run
             else {
-                resolve(content);
+                resolve(lines);
             }
         });
     })
@@ -298,5 +317,14 @@ function createActivity(activity) {
             log.info(success);
         }
     );
+}
+
+function convertSecsDuration(duration) {
+    var m = moment.duration(duration, 'seconds');
+    return moment().format('h:mm:ss');
+}
+
+function convertDistanceToKm(distance) {
+    return Math.floor(distance / 1000 * 100) / 100 + ' km';
 }
 
