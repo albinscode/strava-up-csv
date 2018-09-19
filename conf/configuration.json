@@ -48,7 +48,7 @@
                 "header": "Date"
             },
             "average_speed": {
-                "filter": null,
+                "filter": "convertSpeedToKmh",
                 "default": "",
                 "header": "Average speed"
             }

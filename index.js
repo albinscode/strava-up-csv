@@ -221,7 +221,7 @@ function exportActivities() {
     }
 
     // will be called recursivly from page 0 to n
-    fetchActivity([], 0, perPage).then(function (lines, error) {
+    fetchActivity([], 1, perPage).then(function (lines, error) {
 
         var content = '';
 
@@ -262,9 +262,10 @@ function exportActivities() {
 function fetchActivity(lines, page, perPage) {
     return new Promise(function (resolve, reject) {
 
+        log.info("fetching from strava");
+
         strava.athlete.listActivities({after: program.startDate.unix(), before: program.endDate.unix(), per_page: perPage, page: page}, function(error, activities) {
 
-            log.info("fetching from strava");
             if (error) {
                 log.error('error is ' + JSON.stringify(error));
                 reject(error)
@@ -295,7 +296,7 @@ function fetchActivity(lines, page, perPage) {
 
             // we continue to fetch from strava server
             if (activities.length === perPage) {
-                resolve(fetchActivity(lines, page+1, perPage));
+                resolve(fetchActivity(lines, ++page, perPage));
             }
             // no more strava requests to run
             else {
@@ -325,6 +326,10 @@ function createActivity(activity) {
 function convertSecsDuration(duration) {
     var duration = moment.duration(duration, 'seconds');
     return moment.utc(duration.asMilliseconds()).format('HH:mm:ss');
+}
+
+function convertSpeedToKmh(speed) {
+    return Math.floor(speed * 3.6 * 100) / 100;
 }
 
 function convertDistanceToKm(distance) {
