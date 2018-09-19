@@ -223,6 +223,8 @@ function exportActivities() {
     // will be called recursivly from page 0 to n
     fetchActivity([], 0, perPage).then(function (lines, error) {
 
+        var content = '';
+
         if (program.file) {
             // headers
             Object.keys(conf.activities_export.columns).forEach(function (key) {
@@ -232,8 +234,9 @@ function exportActivities() {
 
             // content
             lines.forEach(function (line) {
-                line.forEach(function(column) {
-                    content = content + conf.activities_export.column_separator;
+                Object.keys(conf.activities_export.columns).forEach(function(key) {
+
+                    content = content + line[key] + conf.activities_export.column_separator;
                 });
                 content = content + conf.activities_export.row_separator;
             });
@@ -320,11 +323,11 @@ function createActivity(activity) {
 }
 
 function convertSecsDuration(duration) {
-    var m = moment.duration(duration, 'seconds');
-    return moment().format('h:mm:ss');
+    var duration = moment.duration(duration, 'seconds');
+    return moment.utc(duration.asMilliseconds()).format('HH:mm:ss');
 }
 
 function convertDistanceToKm(distance) {
-    return Math.floor(distance / 1000 * 100) / 100 + ' km';
+    return Math.floor(distance / 1000 * 100) / 100;
 }
 
